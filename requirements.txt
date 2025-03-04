@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+python-multipart
+PyPDF
+transformers
+pymilvus
+pydantic
+pyyaml
+sqlalchemy

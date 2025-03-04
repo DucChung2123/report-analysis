@@ -7,3 +7,7 @@ pymilvus
 pydantic
 pyyaml
 sqlalchemy
+dotenv
+PyPDF2
+python-multipart
+pdfminer.six

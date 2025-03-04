@@ -1,0 +1,41 @@
+---
+id: 52c1fc0e-3adc-4779-bd54-fb94acce52a5
+---
+sequenceDiagram
+    actor User as Người dùng
+    participant Upload as PDF Upload Service
+    participant Process as PDF Processing Service
+    participant Extract as Text Extraction
+    participant Chunk as Text Chunking
+    participant Embed as Vector Embedding
+    participant VDB as Vector Database
+    participant DDB as Document Storage
+    participant Search as Search API
+    participant Query as Query Processing
+    participant Engine as Semantic Search Engine
+    participant Rank as Result Ranking
+    participant Response as Response Generation
+
+    %% Upload flow
+    User->>Upload: Upload PDF
+    Upload->>Process: Gửi PDF đến queue xử lý
+    Upload->>DDB: Lưu metadata PDF
+    Upload->>User: Trả về ID tài liệu
+    
+    %% Processing flow
+    Process->>Extract: Trích xuất text
+    Extract->>Chunk: Chia text thành chunks
+    Chunk->>Embed: Tạo vector embeddings
+    Embed->>VDB: Lưu vector và metadata
+    Embed->>DDB: Cập nhật trạng thái xử lý
+    
+    %% Search flow
+    User->>Search: Gửi câu query
+    Search->>Query: Xử lý query
+    Query->>Embed: Tạo vector embedding cho query
+    Embed->>Engine: Tìm kiếm tương đồng
+    Engine->>VDB: Truy vấn vector DB
+    VDB->>Engine: Trả về chunks phù hợp
+    Engine->>Rank: Xếp hạng kết quả
+    Rank->>Response: Tạo phản hồi
+    Response->>User: Trả về kết quả

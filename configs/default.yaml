@@ -1,0 +1,15 @@
+api:
+  title: "ESG Financial Analyzer"
+  description: "API for analyzing ESG criteria in financial reports"
+  version: "0.1.0"
+  prefix: "/api/v1"
+
+logging:
+  level: "INFO"
+  log_file: "logs/app.log"
+
+document:
+  upload_dir: "uploads"
+  extractor:
+    timeout: 300
+     

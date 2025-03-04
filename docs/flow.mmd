@@ -1,0 +1,25 @@
+---
+id: 86b9f5e5-535f-4b23-9ad0-678edb724223
+---
+flowchart TD
+    A[Người dùng] -->|Upload PDF| B[PDF Upload Service]
+    B --> C[PDF Processing Service]
+    C --> D[Text Extraction Module]
+    D --> E[Text Chunking Module]
+    E --> F[Vector Embedding Module]
+    F --> G[(Vector Database)]
+    
+    A -->|Query| H[Search API]
+    H --> I[Query Processing]
+    I --> J[Semantic Search Engine]
+    J --> G
+    G --> K[Result Ranking]
+    K --> L[Response Generation]
+    L --> A
+    
+    subgraph "Storage"
+        M[(Document Storage)] <-- Metadata --> G
+    end
+    
+    B --> M
+    C --> M

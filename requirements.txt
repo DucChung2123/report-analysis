@@ -11,3 +11,6 @@ dotenv
 PyPDF2
 python-multipart
 pdfminer.six
+sqlalchemy
+alembic
+psycopg2-binary

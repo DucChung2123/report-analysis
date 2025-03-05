@@ -1,15 +1,35 @@
+# API Configuration
 api:
-  title: "ESG Financial Analyzer"
-  description: "API for analyzing ESG criteria in financial reports"
-  version: "0.1.0"
+  name: "Finance Report Analysis API"
+  version: "1.0.0"
   prefix: "/api/v1"
+  host: "0.0.0.0"
+  port: 8000
+  debug: true
+
+database:
+  url: "postgresql://postgres:postgres@postgres:5432/finance_report"
+  pool_size: 10
+  max_overflow: 20
+  pool_timeout: 30
+  pool_recycle: 1800
+  pool_pre_ping: true
+
+document_processing:
+  chunk_size: 1000
+  chunk_overlap: 200
+  
+storage:
+  upload_dir: "./data/uploads"
+  max_upload_size: 50  # MB
+
+vector_db:
+  engine: "chroma"
+  collection_name: "document_chunks"
+  persist_dir: "./data/chroma_db"
+  embedding_model: "all-MiniLM-L6-v2"
 
 logging:
   level: "INFO"
-  log_file: "logs/app.log"
-
-document:
-  upload_dir: "uploads"
-  extractor:
-    timeout: 300
-     
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  date_format: "%Y-%m-%d %H:%M:%S"

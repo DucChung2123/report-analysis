@@ -7,6 +7,7 @@ api:
   port: 8000
   debug: true
 
+# Database Configuration
 database:
   url: "postgresql://postgres:postgres@postgres:5432/finance_report"
   pool_size: 10
@@ -15,20 +16,47 @@ database:
   pool_recycle: 1800
   pool_pre_ping: true
 
+# Document Processing Configuration
 document_processing:
-  chunk_size: 1000
-  chunk_overlap: 200
+  # Text extraction parameters
+  extraction_timeout: 300  # Timeout in seconds for extraction
   
+  # Chunking parameters
+  chunk_size: 1000  # Number of characters per chunk
+  chunk_overlap: 200  # Overlap between chunks
+  separator: "\n"  # Separator for chunking
+  max_chunks: 1000  # Maximum number of chunks per document
+  context_window_size: 100  # Size of context window for searches
+  
+  # Chunking behavior
+  auto_chunk: true  # Automatically chunk documents on upload
+  chunking_strategy: "text_chunker"  # Chunking strategy to use
+
+# Storage Configuration
 storage:
-  upload_dir: "./data/uploads"
-  max_upload_size: 50  # MB
+  upload_dir: "./data/uploads"  # Directory to store uploaded files
+  max_upload_size: 50  # Maximum upload size in MB
 
+# Vector Database Configuration
 vector_db:
-  engine: "chroma"
-  collection_name: "document_chunks"
-  persist_dir: "./data/chroma_db"
-  embedding_model: "all-MiniLM-L6-v2"
+  engine: "chroma"  # Vector database engine (only chroma supported for now)
+  collection_name: "document_chunks"  # Collection name in vector DB
+  persist_dir: "./data/chroma_db"  # Directory to store vector DB data
+  
+  # Embedding configuration
+  embedding_function: "sentence_transformer"  # Can be "sentence_transformer" or "openai"
+  embedding_model: "all-MiniLM-L6-v2"  # Model name for sentence transformer
+  
+  # ChromaDB specific settings
+  anonymized_telemetry: false  # ChromaDB telemetry
+  allow_reset: true  # Allow collection reset
 
+# OpenAI Configuration (optional, for OpenAI embeddings)
+openai:
+  api_key: ""  # OpenAI API key, can be set via env var OPENAI_API_KEY
+  embedding_model: "text-embedding-ada-002"  # OpenAI embedding model
+
+# Logging Configuration
 logging:
   level: "INFO"
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

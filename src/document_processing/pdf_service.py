@@ -1,9 +1,8 @@
-# src/document_processing/pdf_service.py
 import os
 from pathlib import Path
 import traceback
 from datetime import datetime
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List, Dict, Any
 from uuid import UUID
 
 import PyPDF2
@@ -14,11 +13,22 @@ from sqlalchemy.orm import Session
 from src.core.logger import logger
 from src.core.config import config
 from src.database.model import Document, ProcessingStatus
+from src.document_processing.text_chunker import TextChunker
+from src.vector_db.chroma_service import ChromaService
 
 
 class PDFService:
     def __init__(self):
-        self.extraction_time_out = config.get("document.etractor.timeout", 300)
+        # Get configs from YAML file
+        self.extraction_timeout = config.get("document_processing.extraction_timeout", 300)
+        self.auto_chunk = config.get("document_processing.auto_chunk", True)
+        self.chunking_strategy = config.get("document_processing.chunking_strategy", "text_chunker")
+        
+        # Initialize services
+        self.text_chunker = TextChunker()
+        self.vector_db = ChromaService()
+        
+        logger.info(f"PDFService initialized with auto_chunk={self.auto_chunk}, strategy={self.chunking_strategy}")
 
     def validate_pdf(self, file_path: Path) -> tuple[bool, str | None]:
         """
@@ -65,8 +75,10 @@ class PDFService:
         try:
             logger.info(f"Extracting text from {file_path}")
 
+            # Try with PDFMiner first
             extracted_text = pdfminer_extract_text(file_path)
 
+            # If PDFMiner fails, try PyPDF2
             if not extracted_text or len(extracted_text.strip()) == 0:
                 logger.info(
                     f"PDFMiner extraction failed, trying PyPDF2 for {file_path}"
@@ -124,15 +136,73 @@ class PDFService:
             logger.error(f"PyPDF2 extraction error: {str(e)}")
             return None
             
+    # --- Chunking and Vector DB methods ---
+    
+    def process_chunks(self, document_id: UUID, text: str) -> Tuple[int, Optional[str]]:
+        """
+        Process text into chunks and store in vector database
+        
+        Args:
+            document_id: ID of the document
+            text: Text to process
+            
+        Returns:
+            Tuple[int, Optional[str]]: Number of chunks processed and error message if any
+        """
+        try:
+            logger.info(f"Processing document {document_id} for chunking")
+            
+            # Create document metadata
+            metadata = {
+                "document_id": str(document_id),
+                "chunking_method": self.chunking_strategy,
+                "chunking_size": self.text_chunker.chunk_size,
+                "chunking_overlap": self.text_chunker.chunk_overlap,
+                "processed_at": datetime.now().isoformat()
+            }
+            
+            # Create chunks
+            chunks, chunks_metadata = self.text_chunker.chunk_text(
+                text=text,
+                document_id=str(document_id),
+                metadata=metadata
+            )
+            
+            if not chunks:
+                logger.warning(f"No chunks were generated for document {document_id}")
+                return 0, "No chunks were generated"
+                
+            # Store chunks in vector database
+            success = self.vector_db.add_chunks(
+                document_id=document_id,
+                chunks=chunks,
+                metadatas=chunks_metadata
+            )
+            
+            if not success:
+                logger.error(f"Failed to store chunks in vector database for document {document_id}")
+                return 0, "Failed to store chunks in vector database"
+                
+            logger.info(f"Successfully processed {len(chunks)} chunks for document {document_id}")
+            return len(chunks), None
+            
+        except Exception as e:
+            error_msg = f"Error processing chunks: {str(e)}"
+            logger.error(error_msg)
+            logger.debug(f"Stack trace: {traceback.format_exc()}")
+            return 0, error_msg
+    
     # --- Database integration methods ---
     
-    def create_document(self, db: Session, file_name: str) -> Document:
+    def create_document(self, db: Session, file_name: str, file_path: Optional[str] = None, file_size: Optional[int] = None) -> Document:
         """
         Create a new document in database
         
         Args:
             db: Database session
             file_name: Name of the file
+            file_path: Path to the file
+            file_size: Size of the file in bytes
             
         Returns:
             Document: Created document
@@ -227,4 +297,32 @@ class PDFService:
         # Save extracted text to database
         self.save_extracted_text(db, document.id, extracted_text)
         
+        # Process chunks if auto_chunk is enabled
+        if self.auto_chunk and extracted_text:
+            chunk_count, chunk_error = self.process_chunks(document.id, extracted_text)
+            if chunk_error:
+                logger.warning(f"Error in chunking process: {chunk_error}")
+                # We don't fail the whole process if chunking fails
+        
         return document.id, extracted_text, None
+    
+    def delete_document_chunks(self, document_id: UUID) -> bool:
+        """
+        Delete all chunks for a document from vector database
+        
+        Args:
+            document_id: Document ID
+            
+        Returns:
+            bool: True if successful
+        """
+        try:
+            success = self.vector_db.delete_document(document_id)
+            if success:
+                logger.info(f"Successfully deleted chunks for document {document_id}")
+            else:
+                logger.warning(f"Failed to delete chunks for document {document_id}")
+            return success
+        except Exception as e:
+            logger.error(f"Error deleting chunks: {str(e)}")
+            return False
